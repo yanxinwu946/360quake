@@ -559,8 +559,10 @@ input:focus, textarea:focus { border-color: var(--accent-dim); }
 .pane.on { display: block; }
 #pane-table.on { display: block; }
 table {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
   font-size: 13px;
 }
 th, td {
@@ -568,7 +570,6 @@ th, td {
   border-bottom: 1px solid var(--line);
   text-align: left;
   white-space: nowrap;
-  max-width: 280px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -580,6 +581,26 @@ th {
   font-weight: 600;
   font-size: 11px;
   letter-spacing: 0.06em;
+  user-select: none;
+}
+th span { display: block; overflow: hidden; text-overflow: ellipsis; }
+.col-resizer {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 7px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 3;
+}
+.col-resizer:hover,
+body.col-resizing .col-resizer.active {
+  background: var(--accent);
+}
+body.col-resizing,
+body.col-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
 }
 tbody tr { cursor: pointer; }
 tbody tr:hover { background: var(--row-hover); }

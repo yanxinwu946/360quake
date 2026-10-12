@@ -252,8 +252,41 @@ function setStatus(text, ratio) {
   if (typeof ratio === "number") $("bar").style.width = `${Math.max(0, Math.min(100, ratio * 100))}%`;
 }
 
+const COL_MIN = 64;
+const COL_DEFAULT = 148;
+let colWidths = {};
+try {
+  colWidths = JSON.parse(localStorage.getItem("quake-col-widths") || "{}") || {};
+} catch {
+  colWidths = {};
+}
+
+function colWidth(id) {
+  const w = Number(colWidths[id]);
+  return Number.isFinite(w) && w >= COL_MIN ? w : COL_DEFAULT;
+}
+
+function applyColWidths() {
+  const cols = state.fields;
+  $("colgroup").innerHTML = cols
+    .map((f) => `<col data-id="${esc(f.id)}" style="width:${colWidth(f.id)}px">`)
+    .join("");
+  const total = cols.reduce((n, f) => n + colWidth(f.id), 0);
+  const table = $("grid");
+  if (table) table.style.width = `${Math.max(total, 1)}px`;
+}
+
+function persistColWidths() {
+  localStorage.setItem("quake-col-widths", JSON.stringify(colWidths));
+}
+
 function renderHead() {
-  $("thead").innerHTML = state.fields.map((f) => `<th>${esc(f.label)}</th>`).join("");
+  $("thead").innerHTML = state.fields
+    .map(
+      (f) => `<th data-id="${esc(f.id)}"><span>${esc(f.label)}</span><i class="col-resizer" data-id="${esc(f.id)}"></i></th>`
+    )
+    .join("");
+  applyColWidths();
 }
 
 function renderRows(filter = "") {
@@ -729,6 +762,32 @@ function openRowUrl(index) {
   if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(url)) url = "http://" + url;
   window.open(url, "_blank", "noopener,noreferrer");
 }
+
+let resizing = null;
+$("thead").addEventListener("mousedown", (e) => {
+  const handle = e.target.closest(".col-resizer");
+  if (!handle) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const id = handle.dataset.id;
+  resizing = { id, startX: e.clientX, startW: colWidth(id), handle };
+  handle.classList.add("active");
+  document.body.classList.add("col-resizing");
+});
+window.addEventListener("mousemove", (e) => {
+  if (!resizing) return;
+  e.preventDefault();
+  const w = Math.max(COL_MIN, resizing.startW + (e.clientX - resizing.startX));
+  colWidths[resizing.id] = w;
+  applyColWidths();
+});
+window.addEventListener("mouseup", () => {
+  if (!resizing) return;
+  resizing.handle.classList.remove("active");
+  document.body.classList.remove("col-resizing");
+  persistColWidths();
+  resizing = null;
+});
 
 let rowClickTimer = 0;
 $("tbody").onclick = (e) => {
