@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>360Quake 资产导出</title>
+  <script>
+    document.documentElement.dataset.theme = localStorage.getItem("quake-theme") === "light" ? "light" : "dark";
+  </script>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="side">
+      <header class="brand">
+        <div class="brand-main">
+          <div class="mark"></div>
+          <div>
+            <h1>360Quake</h1>
+            <p>资产检索与导出</p>
+          </div>
+        </div>
+        <div class="theme-switch" role="group" aria-label="主题">
+          <button type="button" data-theme="dark">黑</button>
+          <button type="button" data-theme="light">白</button>
+        </div>
+      </header>
+
+      <div class="side-head">
+        <span>账号</span>
+        <button type="button" class="btn ghost" id="btn-add">添加</button>
+      </div>
+      <div class="cookie-list" id="account-box"></div>
+      <p class="hint" id="account-hint">请添加 Quake 登录凭证后开始检索。</p>
+
+      <div class="side-head">
+        <span>检索记录</span>
+      </div>
+      <div class="history" id="history"></div>
+    </aside>
+
+    <main class="main">
+      <section class="search-card">
+        <div class="search-row">
+          <input id="query" type="text" placeholder='检索语句，例如 domain:"example.com"' autocomplete="off" />
+          <label class="size-wrap">
+            <input id="size" type="number" min="1" max="100" value="100" title="返回条数" />
+            <span>条</span>
+          </label>
+          <button type="button" class="btn primary" id="btn-search">检索</button>
+          <button type="button" class="btn" id="btn-cancel" hidden>停止</button>
+        </div>
+        <div class="chip-row">
+          <div class="chips" id="chips"></div>
+          <button type="button" class="btn ghost" id="btn-fields">字段</button>
+          <button type="button" class="btn ghost" id="btn-syntax">语法参考</button>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress"><i id="bar"></i></div>
+          <div class="status" id="status">配置账号后即可开始资产检索。</div>
+        </div>
+      </section>
+
+      <section class="result-card">
+        <div class="result-bar">
+          <div class="tabs">
+            <button class="tab on" data-tab="table">表格</button>
+            <button class="tab" data-tab="json">JSON</button>
+          </div>
+          <input id="filter" type="search" placeholder="筛选结果" />
+          <div class="stats" id="stats"></div>
+          <div class="exports" id="exports">
+            <button data-fmt="json">JSON</button>
+            <button data-fmt="csv">CSV</button>
+            <button data-fmt="url">URL</button>
+            <button data-fmt="ip">IP</button>
+            <button data-fmt="host">主机</button>
+            <button data-fmt="domain">域名</button>
+          </div>
+        </div>
+        <div class="pane on" id="pane-table">
+          <table>
+            <thead>
+              <tr id="thead"></tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+          <div class="empty" id="empty">
+            <strong>暂无数据</strong>
+            <span>检索完成后，结果将在此展示</span>
+          </div>
+        </div>
+        <pre class="pane json" id="pane-json"></pre>
+      </section>
+    </main>
+  </div>
+
+  <div class="overlay" id="overlay" hidden>
+    <div class="modal" id="modal"></div>
+  </div>
+  <div class="toast" id="toast" hidden></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+[project]
+name = "quake-export"
+version = "2.0.0"
+description = "360 Quake 资产检索与导出"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+authors = [{ name = "360Quake" }]
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "httpx>=0.27",
+]
+
+[project.scripts]
+quake-export = "src.app:run"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["src*"]
