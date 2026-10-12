@@ -439,7 +439,7 @@ body {
 
 .search-row {
   display: grid;
-  grid-template-columns: 1fr 108px auto auto;
+  grid-template-columns: 1fr 108px auto auto auto;
   gap: 8px;
 }
 input, textarea, button {
@@ -489,6 +489,10 @@ input:focus, textarea:focus { border-color: var(--accent-dim); }
   font-weight: 650;
 }
 .btn.ghost { padding: 5px 10px; font-size: 12px; }
+.btn.ghost.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
 .btn.danger { color: var(--danger); }
 .btn.tiny { padding: 4px 8px; font-size: 12px; }
 

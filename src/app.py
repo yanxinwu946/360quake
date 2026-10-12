@@ -14,7 +14,8 @@ from pydantic import BaseModel, Field
 from src.export import CATALOG, item_url, project, render, stats
 from src.jobs import Job, JobHub
 from src.paths import CONFIG, WEB
-from src.quake import QuakeError, check_cookie, normalize_cookie, normalize_query, run_search
+from src.quake import check_cookie, normalize_cookie, normalize_query, run_search
+from src.regions import PROVINCES
 from src.store import Store
 
 
@@ -26,6 +27,7 @@ class CookieIn(BaseModel):
 class SearchIn(BaseModel):
     query: str
     size: int = Field(default=100, ge=1, le=100)
+    split: bool = False
 
 
 class FieldsIn(BaseModel):
@@ -92,6 +94,7 @@ async def api_state():
         "history": snap["history"],
         "settings": snap["settings"],
         "catalog": [{"id": key, "label": label, "path": path} for key, label, path in CATALOG],
+        "provinces": [{"id": en, "label": cn} for en, cn in PROVINCES],
     }
 
 
@@ -159,7 +162,8 @@ async def api_search(body: SearchIn):
     cookie = store().get_cookie()
     if not cookie:
         raise HTTPException(400, "请先添加账号")
-    job = hub().add(Job(query=query, size=body.size))
+    regions = [en for en, _ in PROVINCES] if body.split else []
+    job = hub().add(Job(query=query, size=body.size, regions=regions))
 
     async def runner():
         try:
@@ -187,7 +191,7 @@ async def api_job(job_id: str):
 
 
 @app.get("/api/search/{job_id}/rows")
-async def api_rows(job_id: str, offset: int = 0, limit: int = 2000):
+async def api_rows(job_id: str, offset: int = 0, limit: int = 20000):
     job = hub().get(job_id)
     if not job:
         raise HTTPException(404, "任务不存在")

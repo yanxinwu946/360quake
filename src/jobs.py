@@ -16,6 +16,8 @@ class Job:
     page: int = 0
     pages: int = 0
     count: int = 0
+    using: str = ""
+    regions: list[str] = field(default_factory=list)
     data: list[dict] = field(default_factory=list)
     cancel: asyncio.Event = field(default_factory=asyncio.Event)
     task: asyncio.Task | None = None
@@ -30,6 +32,7 @@ class Job:
             "page": self.page,
             "pages": self.pages,
             "count": self.count,
+            "using": self.using,
         }
 
 

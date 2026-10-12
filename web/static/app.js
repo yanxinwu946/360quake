@@ -99,7 +99,7 @@ const handbook = [
     items: [
       ['country:"CN"', "国家代码 / 英文"],
       ['country_cn:"中国"', "国家中文"],
-      ['province:"Beijing"', "省份英文"],
+      ['province:"Beijing"', "省份英文，按省拆分可扩大覆盖"],
       ['province_cn:"北京"', "省份中文"],
       ['city:"Shanghai"', "城市英文"],
       ['city_cn:"上海"', "城市中文"],
@@ -520,11 +520,20 @@ function vipFieldsIn(query) {
   return found;
 }
 
-async function search() {
+function setSearching(on) {
+  $("btn-search").disabled = on;
+  $("btn-split").disabled = on;
+  $("btn-cancel").hidden = !on;
+}
+
+async function search(split) {
   const query = $("query").value.trim();
   const size = Number($("size").value || 100);
   if (!query) return toast("请输入检索语句");
   if (!state.account) return toast("请先添加账号");
+  if (split && /\bprovince(_cn|_en)?\s*:/i.test(query)) {
+    return toast("语句已包含省份条件，直接检索即可");
+  }
   const blocked = vipFieldsIn(query);
   const basic = /基础|注册|basic/i.test(`${state.account.role || ""}`);
   if (blocked.length && basic) {
@@ -532,20 +541,18 @@ async function search() {
     setStatus(msg);
     return toast(msg);
   }
-  $("btn-search").disabled = true;
-  $("btn-cancel").hidden = false;
-  setStatus("正在检索…", 0.04);
+  setSearching(true);
+  setStatus(split ? "正在按地区拆分检索…" : "正在检索…", 0.04);
   try {
     const job = await api("/api/search", {
       method: "POST",
-      body: JSON.stringify({ query, size }),
+      body: JSON.stringify({ query, size, split: !!split }),
     });
     state.job = job;
     listen(job.id);
   } catch (err) {
     setStatus(err.message);
-    $("btn-search").disabled = false;
-    $("btn-cancel").hidden = true;
+    setSearching(false);
     toast(err.message);
   }
 }
@@ -556,25 +563,23 @@ async function listen(id) {
     state.job = job;
     const ratio = job.pages ? job.page / job.pages : 0;
     if (job.status === "running") {
-      setStatus(`已获取 ${job.count} 条`, ratio);
+      setStatus(`已获取 ${job.count} 条${job.using ? " · " + job.using : ""} · ${job.page}/${job.pages}`, ratio);
     }
     if (job.status === "done") {
-      const data = await api(`/api/search/${id}/rows?limit=5000`);
+      const data = await api(`/api/search/${id}/rows?limit=20000`);
       state.rows = data.rows;
       if (data.fields) state.fields = data.fields;
       renderRows($("filter").value);
       const s = data.stats;
       $("stats").textContent = `${s.count} 条 · ${s.ips} 个 IP · ${s.ports} 个端口`;
       setStatus(`检索完成，共 ${s.count} 条`, 1);
-      $("btn-search").disabled = false;
-      $("btn-cancel").hidden = true;
+      setSearching(false);
       boot();
       return;
     }
     if (job.status === "error" || job.status === "cancelled") {
       setStatus(job.error || "已取消");
-      $("btn-search").disabled = false;
-      $("btn-cancel").hidden = true;
+      setSearching(false);
       if (job.error) toast(job.error);
       return;
     }
@@ -647,7 +652,8 @@ function openHandbook() {
 $("btn-syntax").onclick = openHandbook;
 $("btn-fields").onclick = openFields;
 $("btn-add").onclick = () => accountForm(false);
-$("btn-search").onclick = search;
+$("btn-search").onclick = () => search(false);
+$("btn-split").onclick = () => search(true);
 $("query").addEventListener("keydown", (e) => {
   if (e.key === "Enter") search();
 });

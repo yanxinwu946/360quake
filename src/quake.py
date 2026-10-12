@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 
 import httpx
+
+from src.regions import has_province, item_key, resolve_provinces, with_province
 
 WEB_URL = "https://quake.360.net/api/search/query_string/quake_service"
 USER_URL = "https://quake.360.net/api/user/info"
@@ -147,20 +150,51 @@ async def check_cookie(client: httpx.AsyncClient, cookie: str) -> dict:
     return _parse_user(body)
 
 
+async def _search_once(client: httpx.AsyncClient, cookie: str, query: str, size: int) -> list[dict]:
+    try:
+        result = await search_page(client, cookie, query, 0, size)
+        return result["data"][:size]
+    except QuakeError as exc:
+        if str(exc.code) != "q3005":
+            raise
+        await asyncio.sleep(1.6)
+        result = await search_page(client, cookie, query, 0, size)
+        return result["data"][:size]
+
+
 async def run_search(job, client: httpx.AsyncClient, cookie: dict) -> None:
     size = min(job.size, PAGE_SIZE)
-    job.pages = 1
+    regions = [] if has_province(job.query) else resolve_provinces(job.regions)
+    queries = [(job.query, "")] if not regions else [(with_province(job.query, en), cn) for en, cn in regions]
+    job.pages = len(queries)
+    merged: list[dict] = []
+    seen: set[str] = set()
     try:
+        for index, (query, label) in enumerate(queries, start=1):
+            if job.cancel.is_set():
+                job.status = "cancelled"
+                return
+            job.using = label
+            job.page = index
+            try:
+                rows = await _search_once(client, cookie["cookie"], query, size)
+            except QuakeError as exc:
+                if str(exc.code) in {"q3005"} and merged:
+                    continue
+                raise
+            for item in rows:
+                key = item_key(item)
+                if key in seen:
+                    continue
+                seen.add(key)
+                merged.append(item)
+            job.data = merged
+            job.count = len(merged)
+            if index < len(queries):
+                await asyncio.sleep(0.22)
         if job.cancel.is_set():
             job.status = "cancelled"
             return
-        result = await search_page(client, cookie["cookie"], job.query, 0, size)
-        if job.cancel.is_set():
-            job.status = "cancelled"
-            return
-        job.data = result["data"][:size]
-        job.count = len(job.data)
-        job.page = 1
         job.status = "done"
     except Exception as exc:
         if job.cancel.is_set():
