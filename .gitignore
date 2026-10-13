@@ -11,4 +11,5 @@ build/
 *.spec
 .idea/
 .vscode/
+.grok/
 *.egg-info/

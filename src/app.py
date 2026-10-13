@@ -11,12 +11,15 @@ from fastapi.responses import Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from fastmcp.utilities.lifespan import combine_lifespans
+
 from src.export import CATALOG, item_url, project, render, stats
 from src.jobs import Job, JobHub
-from src.paths import CONFIG, WEB
+from src.mcp_server import mcp as quake_mcp
+from src.paths import WEB
 from src.quake import check_cookie, normalize_cookie, normalize_query, run_search
 from src.regions import PROVINCES
-from src.store import Store
+from src.store import get_store, public_account
 
 
 class CookieIn(BaseModel):
@@ -35,41 +38,26 @@ class FieldsIn(BaseModel):
     unmask_ip: bool | None = None
 
 
-def public_account(item: dict | None) -> dict | None:
-    if not item:
-        return None
-    raw = item.get("cookie") or ""
-    preview = raw[:18] + "…" if len(raw) > 18 else raw
-    return {
-        "id": item["id"],
-        "name": item.get("name") or "",
-        "ok": item.get("ok"),
-        "message": item.get("message") or "",
-        "preview": preview,
-        "updated": item.get("updated") or "",
-        "username": item.get("username") or "",
-        "role": item.get("role") or "",
-        "month": item.get("month"),
-        "persistent": item.get("persistent"),
-        "api": item.get("api"),
-        "ban": item.get("ban") or "",
-    }
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.store = Store(CONFIG)
+    app.state.store = get_store()
     app.state.jobs = JobHub()
     app.state.http = httpx.AsyncClient(timeout=45.0, trust_env=False, follow_redirects=False)
     yield
     await app.state.http.aclose()
 
 
-app = FastAPI(title="360Quake", version="2.0.0", lifespan=lifespan)
+mcp_app = quake_mcp.http_app(path="/")
+app = FastAPI(
+    title="360Quake",
+    version="2.0.0",
+    lifespan=combine_lifespans(lifespan, mcp_app.lifespan),
+)
+app.mount("/mcp", mcp_app)
 app.mount("/static", StaticFiles(directory=WEB / "static"), name="static")
 
 
-def store() -> Store:
+def store():
     return app.state.store
 
 

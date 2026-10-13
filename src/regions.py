@@ -45,13 +45,27 @@ def has_province(query: str) -> bool:
     return bool(re.search(r"\bprovince(_cn|_en)?\s*:", query, re.I))
 
 
-def with_province(query: str, en: str) -> str:
+def has_country(query: str) -> bool:
+    return bool(re.search(r"\bcountry(_cn|_en)?\s*:", query, re.I))
+
+
+def _and(query: str, clause: str) -> str:
     q = query.strip()
     if not q:
-        return f'province:"{en}"'
+        return clause
     if re.search(r"\bOR\b", q) and not (q.startswith("(") and q.endswith(")")):
         q = f"({q})"
-    return f'{q} AND province:"{en}"'
+    return f"{q} AND {clause}"
+
+
+def with_china(query: str) -> str:
+    if has_country(query):
+        return query.strip()
+    return _and(query, 'country_cn:"中国"')
+
+
+def with_province(query: str, en: str) -> str:
+    return _and(query, f'province:"{en}"')
 
 
 def resolve_provinces(keys: list[str] | None) -> list[tuple[str, str]]:

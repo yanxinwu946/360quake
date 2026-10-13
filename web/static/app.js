@@ -96,10 +96,11 @@ const handbook = [
   },
   {
     title: "地理位置",
+    note: "国内分省会自动限定中国，并按省分别检索后合并。",
     items: [
       ['country:"CN"', "国家代码 / 英文"],
       ['country_cn:"中国"', "国家中文"],
-      ['province:"Beijing"', "省份英文，按省拆分可扩大覆盖"],
+      ['province:"Beijing"', "省份英文"],
       ['province_cn:"北京"', "省份中文"],
       ['city:"Shanghai"', "城市英文"],
       ['city_cn:"上海"', "城市中文"],
@@ -559,8 +560,33 @@ function setSearching(on) {
   $("btn-cancel").hidden = !on;
 }
 
+function rewriteEquals(query) {
+  let out = "";
+  let quote = false;
+  for (let i = 0; i < query.length; i++) {
+    const ch = query[i];
+    if (quote) {
+      out += ch;
+      if (ch === '"' && query[i - 1] !== "\\") quote = false;
+      continue;
+    }
+    if (ch === '"') {
+      quote = true;
+      out += ch;
+      continue;
+    }
+    if (ch === "=" && query[i + 1] !== "=" && /[A-Za-z0-9_]$/.test(out)) {
+      out += ":";
+      continue;
+    }
+    out += ch;
+  }
+  return out;
+}
+
 async function search(split) {
-  const query = $("query").value.trim();
+  let query = rewriteEquals($("query").value.trim());
+  if (query !== $("query").value.trim()) $("query").value = query;
   const size = Number($("size").value || 100);
   if (!query) return toast("请输入检索语句");
   if (!state.account) return toast("请先添加账号");
@@ -575,7 +601,7 @@ async function search(split) {
     return toast(msg);
   }
   setSearching(true);
-  setStatus(split ? "正在按地区拆分检索…" : "正在检索…", 0.04);
+  setStatus(split ? "正在按中国各省检索…" : "正在检索…", 0.04);
   try {
     const job = await api("/api/search", {
       method: "POST",

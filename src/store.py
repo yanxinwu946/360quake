@@ -8,6 +8,7 @@ from pathlib import Path
 from threading import Lock
 
 from src.export import DEFAULT_FIELDS, resolve_fields
+from src.paths import CONFIG
 
 
 def _now() -> str:
@@ -133,3 +134,34 @@ class Store:
             history = [item, *[h for h in self.data["history"] if h.get("query") != query]]
             self.data["history"] = history[:40]
             self._save()
+
+
+_instance: Store | None = None
+
+
+def get_store() -> Store:
+    global _instance
+    if _instance is None:
+        _instance = Store(CONFIG)
+    return _instance
+
+
+def public_account(item: dict | None) -> dict | None:
+    if not item:
+        return None
+    raw = item.get("cookie") or ""
+    preview = raw[:18] + "…" if len(raw) > 18 else raw
+    return {
+        "id": item["id"],
+        "name": item.get("name") or "",
+        "ok": item.get("ok"),
+        "message": item.get("message") or "",
+        "preview": preview,
+        "updated": item.get("updated") or "",
+        "username": item.get("username") or "",
+        "role": item.get("role") or "",
+        "month": item.get("month"),
+        "persistent": item.get("persistent"),
+        "api": item.get("api"),
+        "ban": item.get("ban") or "",
+    }

@@ -5,7 +5,7 @@ from datetime import datetime
 
 import httpx
 
-from src.regions import has_province, item_key, resolve_provinces, with_province
+from src.regions import has_province, item_key, resolve_provinces, with_china, with_province
 
 WEB_URL = "https://quake.360.net/api/search/query_string/quake_service"
 USER_URL = "https://quake.360.net/api/user/info"
@@ -165,7 +165,8 @@ async def _search_once(client: httpx.AsyncClient, cookie: str, query: str, size:
 async def run_search(job, client: httpx.AsyncClient, cookie: dict) -> None:
     size = min(job.size, PAGE_SIZE)
     regions = [] if has_province(job.query) else resolve_provinces(job.regions)
-    queries = [(job.query, "")] if not regions else [(with_province(job.query, en), cn) for en, cn in regions]
+    base = with_china(job.query) if regions else job.query
+    queries = [(base, "")] if not regions else [(with_province(base, en), cn) for en, cn in regions]
     job.pages = len(queries)
     merged: list[dict] = []
     seen: set[str] = set()
