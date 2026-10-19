@@ -26,7 +26,7 @@ class Store:
         self.data = {
             "cookie": None,
             "history": [],
-            "settings": {"default_size": 100, "fields": list(DEFAULT_FIELDS), "unmask_ip": False},
+            "settings": {"default_size": 100, "fields": list(DEFAULT_FIELDS)},
         }
         self._load()
 
@@ -41,8 +41,7 @@ class Store:
             self.data["cookie"] = chosen
         settings = self.data.setdefault("settings", {})
         settings.setdefault("default_size", 100)
-        settings.setdefault("unmask_ip", False)
-        settings["unmask_ip"] = bool(settings.get("unmask_ip"))
+        settings.pop("unmask_ip", None)
         settings["fields"] = resolve_fields(settings.get("fields"))
         self._save()
 
@@ -115,16 +114,10 @@ class Store:
         with self._lock:
             return resolve_fields(self.data["settings"].get("fields"))
 
-    def unmask_ip(self) -> bool:
-        with self._lock:
-            return bool(self.data["settings"].get("unmask_ip"))
-
-    def set_fields(self, fields, unmask_ip=None) -> list[dict]:
+    def set_fields(self, fields) -> list[dict]:
         resolved = resolve_fields(fields)
         with self._lock:
             self.data["settings"]["fields"] = resolved
-            if unmask_ip is not None:
-                self.data["settings"]["unmask_ip"] = bool(unmask_ip)
             self._save()
             return deepcopy(resolved)
 

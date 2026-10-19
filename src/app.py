@@ -35,7 +35,6 @@ class SearchIn(BaseModel):
 
 class FieldsIn(BaseModel):
     fields: list[str | dict]
-    unmask_ip: bool | None = None
 
 
 @asynccontextmanager
@@ -138,8 +137,8 @@ async def api_check_account():
 
 @app.put("/api/fields")
 async def api_put_fields(body: FieldsIn):
-    fields = store().set_fields(body.fields, body.unmask_ip)
-    return {"fields": fields, "unmask_ip": store().unmask_ip()}
+    fields = store().set_fields(body.fields)
+    return {"fields": fields}
 
 
 @app.post("/api/search")
@@ -173,7 +172,7 @@ async def api_job(job_id: str):
         raise HTTPException(404, "任务不存在")
     payload = job.snapshot()
     if job.status == "done":
-        rows = [project(item, store().fields(), store().unmask_ip()) for item in job.data]
+        rows = [project(item, store().fields()) for item in job.data]
         payload["stats"] = stats(rows)
     return payload
 
@@ -184,9 +183,8 @@ async def api_rows(job_id: str, offset: int = 0, limit: int = 20000):
     if not job:
         raise HTTPException(404, "任务不存在")
     fields = store().fields()
-    unmask = store().unmask_ip()
     rows = [
-        {"_i": i, "_url": item_url(item, unmask), **project(item, fields, unmask)}
+        {"_i": i, "_url": item_url(item), **project(item, fields)}
         for i, item in enumerate(job.data)
     ]
     return {
@@ -241,7 +239,7 @@ async def api_export(job_id: str, fmt: str = "json"):
     if job.status != "done":
         raise HTTPException(400, "检索尚未完成")
     try:
-        name, mime, body = render(job.data, fmt, store().fields(), store().unmask_ip())
+        name, mime, body = render(job.data, fmt, store().fields())
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     return Response(

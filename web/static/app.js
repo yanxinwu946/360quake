@@ -170,7 +170,6 @@ const state = {
   history: [],
   catalog: [],
   fields: [],
-  unmask_ip: false,
   job: null,
   rows: [],
 };
@@ -401,10 +400,6 @@ function openFields() {
       </section>
     </div>
     <div class="fields-foot">
-      <label class="field-easter">
-        <input type="checkbox" id="f-unmask" ${state.unmask_ip ? "checked" : ""} />
-        去 IP 码
-      </label>
       <div class="actions">
         <button type="button" class="btn ghost" id="f-reset">恢复默认</button>
         <button type="button" class="btn" id="f-cancel">取消</button>
@@ -518,10 +513,9 @@ function openFields() {
     if (!draft.length) return toast("请至少保留一个字段");
     const data = await api("/api/fields", {
       method: "PUT",
-      body: JSON.stringify({ fields: draft, unmask_ip: $("f-unmask").checked }),
+      body: JSON.stringify({ fields: draft }),
     });
     state.fields = data.fields;
-    state.unmask_ip = !!data.unmask_ip;
     closeModal();
     if (state.job) {
       const rows = await api(`/api/search/${state.job.id}/rows?limit=5000`);
@@ -539,7 +533,6 @@ async function boot() {
   state.history = data.history;
   state.catalog = data.catalog || [];
   state.fields = data.settings?.fields || [];
-  state.unmask_ip = !!data.settings?.unmask_ip;
   renderAccount();
   renderHistory();
   renderHead();

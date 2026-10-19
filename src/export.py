@@ -115,20 +115,19 @@ def ip_from_id(item: dict) -> str:
     return candidate if is_ip(candidate) else ""
 
 
-def display_ip(item: dict, unmask: bool = False) -> str:
-    if unmask:
-        real = ip_from_id(item)
-        if real:
-            return real
+def display_ip(item: dict) -> str:
+    real = ip_from_id(item)
+    if real:
+        return real
     return clean(item.get("ip"))
 
 
-def item_url(item: dict, unmask: bool = False) -> str:
+def item_url(item: dict) -> str:
     service = item.get("service") or {}
     http = service.get("http") if isinstance(service, dict) else {}
     http = http if isinstance(http, dict) else {}
     name = str(service.get("name") or "").lower() if isinstance(service, dict) else ""
-    ip = display_ip(item, unmask)
+    ip = display_ip(item)
     host = http.get("host") or item.get("domain") or ip or ""
     port = item.get("port") or ""
     if name in ("http/ssl", "https", "tls", "ssl") or "https" in name:
@@ -188,10 +187,10 @@ def resolve_fields(raw) -> list[dict]:
     return out or [dict(CATALOG_MAP[k]) for k in DEFAULT_FIELDS]
 
 
-def extract_field(item: dict, field: dict, unmask_ip: bool = False) -> str:
+def extract_field(item: dict, field: dict) -> str:
     fid = field.get("id") or ""
     if fid == "ip":
-        return display_ip(item, unmask_ip)
+        return display_ip(item)
     if fid == "components":
         return components_of(item)
     if fid == "sys_tag":
@@ -199,18 +198,18 @@ def extract_field(item: dict, field: dict, unmask_ip: bool = False) -> str:
     if fid == "time":
         return fmt_time(item.get("time"))
     if fid == "url":
-        return item_url(item, unmask_ip)
+        return item_url(item)
     if fid == "title":
         return clean(nested(item, "service.http.title")).replace("\n", " ")
     path = field.get("path") or (CATALOG_MAP.get(fid) or {}).get("path") or ""
     return clean(nested(item, path))
 
 
-def project(item: dict, fields=None, unmask_ip: bool = False) -> dict:
+def project(item: dict, fields=None) -> dict:
     cols = resolve_fields(fields)
     row = {}
     for field in cols:
-        row[field["id"]] = extract_field(item, field, unmask_ip)
+        row[field["id"]] = extract_field(item, field)
     return row
 
 
@@ -232,23 +231,21 @@ def filename(fmt: str) -> str:
     return f"quake_{fmt}_{stamp}.{ext}"
 
 
-def render(data: list[dict], fmt: str, fields=None, unmask_ip: bool = False) -> tuple[str, str, str]:
+def render(data: list[dict], fmt: str, fields=None) -> tuple[str, str, str]:
     fmt = fmt.lower()
     name = filename(fmt)
     cols = resolve_fields(fields)
     if fmt == "json":
-        payload = data
-        if unmask_ip:
-            payload = []
-            for item in data:
-                row = dict(item)
-                real = ip_from_id(item)
-                if real:
-                    row["ip"] = real
-                payload.append(row)
+        payload = []
+        for item in data:
+            row = dict(item)
+            real = ip_from_id(item)
+            if real:
+                row["ip"] = real
+            payload.append(row)
         body = json.dumps({"code": 0, "data": payload, "count": len(payload)}, ensure_ascii=False, indent=2)
         return name, "application/json; charset=utf-8", body
-    rows = [project(item, cols, unmask_ip) for item in data]
+    rows = [project(item, cols) for item in data]
     if fmt == "csv":
         buf = io.StringIO()
         writer = csv.writer(buf)
@@ -258,14 +255,14 @@ def render(data: list[dict], fmt: str, fields=None, unmask_ip: bool = False) -> 
         return name, "text/csv; charset=utf-8", "\ufeff" + buf.getvalue()
     lines: list[str] = []
     if fmt == "url":
-        lines = [item_url(item, unmask_ip) for item in data]
+        lines = [item_url(item) for item in data]
     elif fmt == "ip":
-        lines = list(dict.fromkeys(display_ip(item, unmask_ip) for item in data if display_ip(item, unmask_ip)))
+        lines = list(dict.fromkeys(display_ip(item) for item in data if display_ip(item)))
     elif fmt == "host":
         lines = [
-            f"{display_ip(item, unmask_ip)}:{item.get('port')}"
+            f"{display_ip(item)}:{item.get('port')}"
             for item in data
-            if display_ip(item, unmask_ip) and item.get("port") not in ("", None)
+            if display_ip(item) and item.get("port") not in ("", None)
         ]
     elif fmt == "domain":
         lines = list(dict.fromkeys(item.get("domain") for item in data if item.get("domain")))

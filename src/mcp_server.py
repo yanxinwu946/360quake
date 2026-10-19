@@ -32,8 +32,8 @@ def _client() -> httpx.AsyncClient:
     return httpx.AsyncClient(timeout=45.0, trust_env=False, follow_redirects=False)
 
 
-def _hit(item: dict, unmask: bool) -> dict:
-    url = item_url(item, unmask)
+def _hit(item: dict) -> dict:
+    url = item_url(item)
     title = clean(nested(item, "service.http.title")).replace("\n", " ")
     if len(title) > 80:
         title = title[:80].rstrip() + "…"
@@ -101,7 +101,6 @@ async def search(
     if not text:
         raise ToolError("请输入检索语句")
     job = Job(query=text, size=size, regions=[en for en, _cn in PROVINCES] if split else [])
-    unmask = store.unmask_ip()
 
     async with _client() as client:
         task = asyncio.create_task(run_search(job, client, cookie))
@@ -115,7 +114,7 @@ async def search(
 
     if job.status != "done":
         raise ToolError(job.error or "检索失败")
-    hits = [hit for item in job.data if (hit := _hit(item, unmask))]
+    hits = [hit for item in job.data if (hit := _hit(item))]
     store.add_history(job.query, job.size, job.count)
     return {"n": len(hits), "hits": hits}
 

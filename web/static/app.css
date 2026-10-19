@@ -26,7 +26,6 @@
   --toast-fg: #f4f4f4;
   --scroll: #3a3a3a;
   --mark-bg: #0a0a0a;
-  --easter: #3a3a3a;
   --shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
   --radius: 12px;
   --font: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
@@ -61,7 +60,6 @@ html[data-theme="light"] {
   --toast-fg: #ffffff;
   --scroll: #cfcfcf;
   --mark-bg: #ffffff;
-  --easter: #c8c8c8;
   --shadow: 0 18px 48px rgba(20, 20, 20, 0.12);
 }
 
@@ -326,21 +324,10 @@ body {
 .fields-foot {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
   margin-top: 14px;
 }
-.field-easter {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--easter);
-  font-size: 11px;
-  opacity: 0.45;
-  cursor: pointer;
-  user-select: none;
-}
-.field-easter:hover { opacity: 0.95; color: var(--muted); }
 .fields-foot .actions { margin: 0; }
 #pane-table { overflow: auto; }
 
