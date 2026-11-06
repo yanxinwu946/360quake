@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import ipaddress
+import re
 from datetime import datetime
 
 import httpx
@@ -29,10 +31,34 @@ def normalize_cookie(raw: str) -> str:
     return text
 
 
+DOMAIN_RE = re.compile(
+    r"^(?:\*\.)?(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$",
+    re.IGNORECASE,
+)
+
+
+def _is_ip_literal(value: str) -> bool:
+    """Bare IP or CIDR, IPv4 or IPv6. Reject zone ids and netmask notation."""
+    if not value or "%" in value:
+        return False
+    _, _, prefix = value.partition("/")
+    if prefix and not prefix.isdigit():
+        return False
+    try:
+        ipaddress.ip_network(value, strict=False)
+    except ValueError:
+        return False
+    return True
+
+
 def normalize_query(raw: str) -> str:
     query = raw.strip()
     if query.startswith("服务数据 |"):
         query = query[len("服务数据 |"):].strip()
+    if _is_ip_literal(query):
+        return f'ip:"{query}"'
+    if DOMAIN_RE.fullmatch(query):
+        return f"domain:{query}" if query.startswith("*.") else f'domain:"{query}"'
     if query and ":" not in query:
         return f'domain:"{query.strip().strip('"')}"'
     return query

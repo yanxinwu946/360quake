@@ -577,9 +577,31 @@ function rewriteEquals(query) {
   return out;
 }
 
+const IPV4_RE =
+  /^(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/;
+const IPV6_RE =
+  /^(?:(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}|(?:[0-9a-f]{1,4}:){1,7}:|(?:[0-9a-f]{1,4}:){1,6}:[0-9a-f]{1,4}|(?:[0-9a-f]{1,4}:){1,5}(?::[0-9a-f]{1,4}){1,2}|(?:[0-9a-f]{1,4}:){1,4}(?::[0-9a-f]{1,4}){1,3}|(?:[0-9a-f]{1,4}:){1,3}(?::[0-9a-f]{1,4}){1,4}|(?:[0-9a-f]{1,4}:){1,2}(?::[0-9a-f]{1,4}){1,5}|[0-9a-f]{1,4}:(?::[0-9a-f]{1,4}){1,6}|:(?:(?::[0-9a-f]{1,4}){1,7}|:))$/i;
+const DOMAIN_RE =
+  /^(?:\*\.)?(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$/i;
+
+// 整条语句只有一个 IP 或域名时自动补上字段，避免被当成全文检索。
+function autoField(query) {
+  if (!query || /[\s"'()]/.test(query)) return query;
+  const cidr = query.match(/^(.+)\/(\d{1,3})$/);
+  const value = cidr ? cidr[1] : query;
+  const prefix = cidr ? Number(cidr[2]) : null;
+  if (IPV4_RE.test(value) && (prefix === null || prefix <= 32)) return `ip:"${query}"`;
+  if (IPV6_RE.test(value) && (prefix === null || prefix <= 128)) return `ip:"${query}"`;
+  if (!cidr && DOMAIN_RE.test(query)) {
+    return query.startsWith("*.") ? `domain:${query}` : `domain:"${query}"`;
+  }
+  return query;
+}
+
 async function search(split) {
-  let query = rewriteEquals($("query").value.trim());
-  if (query !== $("query").value.trim()) $("query").value = query;
+  const raw = $("query").value.trim();
+  const query = autoField(rewriteEquals(raw));
+  if (query !== raw) $("query").value = query;
   const size = Number($("size").value || 100);
   if (!query) return toast("请输入检索语句");
   if (!state.account) return toast("请先添加账号");
